@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Your Interview Questions</h4>
+        <ol class="list-group list-group-flush">
+            {% for question in questions %}
+                <li class="list-group-item">{{ question }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Record Your Answer</h4>
+        <form method="POST" action="{{ url_for('record_answer', interview_id=interview_id) }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <button type="button" class="btn btn-primary" onclick="startRecording()">Start Recording</button>
+                <button type="button" class="btn btn-danger" onclick="stopRecording()">Stop Recording</button>
+            </div>
+            <audio id="audioPlayback" controls></audio>
+            <input type="hidden" name="audio_data" id="audioData">
+            <button type="submit" class="btn btn-success mt-3">Submit Answer</button>
+        </form>
+    </div>
+</div>
+
+<script>
+let mediaRecorder;
+let audioChunks = [];
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+        mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            document.getElementById('audioPlayback').src = audioUrl;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+                const base64Audio = reader.result.split(",")[1];
+                document.getElementById('audioData').value = base64Audio;
+            };
+        };
+
+        audioChunks = [];
+        mediaRecorder.start();
+    } catch (error) {
+        console.error("Error accessing microphone:", error);
+        alert("Microphone access denied or unavailable.");
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+}
+</script>
+{% endblock %}
